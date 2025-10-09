@@ -11,7 +11,7 @@ let
     dirOf
     concatStringsSep
     ;
-  inherit (core-inputs.nixpkgs.lib) assertMsg last init;
+  inherit (core-inputs.nixpkgs.lib) assertMsg last init hasPrefix;
 
   file-name-regex = "(.*)\\.(.*)$";
 in
@@ -146,5 +146,27 @@ in
     #@ Path -> String
     get-directory-name = path: 
       builtins.unsafeDiscardStringContext (baseNameOf path);
+
+    ## Get relative module path from source directory.
+    ## Example Usage:
+    ## ```nix
+    ## get-relative-module-path "/modules/nixos" "/modules/nixos/foo/bar/default.nix"
+    ## ```
+    ## Result:
+    ## ```nix
+    ## "foo/bar"
+    ## ```
+    #@ String -> Path -> String
+    get-relative-module-path =
+      src: module:
+      let
+        path-name = builtins.replaceStrings [ (builtins.toString src) "/default.nix" ] [ "" "" ] (
+          builtins.unsafeDiscardStringContext module
+        );
+      in
+      if hasPrefix "/" path-name then
+        builtins.substring 1 ((builtins.stringLength path-name) - 1) path-name
+      else
+        path-name;
   };
 }

@@ -9,7 +9,6 @@ let
   inherit (core-inputs.nixpkgs.lib)
     foldl
     mapAttrs
-    hasPrefix
     hasSuffix
     isFunction
     splitString
@@ -39,18 +38,7 @@ in
       let
         user-modules = snowfall-lib.fs.get-default-nix-files-recursive src;
         create-module-metadata = module: {
-          name =
-            let
-              # We are building flake outputs based on file paths. Nix doesn't allow this
-              # so we have to explicitly discard the string's path context for string manipulation.
-              path-name = builtins.replaceStrings [ (builtins.toString src) "/default.nix" ] [ "" "" ] (
-                builtins.unsafeDiscardStringContext module
-              );
-            in
-            if hasPrefix "/" path-name then
-              builtins.substring 1 ((builtins.stringLength path-name) - 1) path-name
-            else
-              path-name;
+          name = snowfall-lib.path.get-relative-module-path src module;
           path = module;
         };
         modules-metadata = builtins.map create-module-metadata user-modules;
