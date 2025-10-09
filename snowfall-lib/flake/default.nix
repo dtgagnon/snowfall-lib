@@ -16,6 +16,7 @@ let
     removeSuffix
     nameValuePair
     traceVal
+    pipe
     ;
 in
 let
@@ -99,15 +100,10 @@ let
     #@ Attrs -> Attrs
     get-libs =
       attrs:
-      foldl
-        (acc: name:
-          let value = attrs.${name}; in
-          if builtins.isAttrs (value.lib or null)
-          then acc // { ${name} = value.lib; }
-          else acc
-        )
-        { }
-        (builtins.attrNames attrs);
+      pipe attrs [
+        (filterAttrs (name: value: builtins.isAttrs (value.lib or null)))
+        (mapAttrs (name: value: value.lib))
+      ];
   };
 
   mkFlake =
@@ -130,21 +126,16 @@ let
         overrides = full-flake-options.templates or { };
         alias = alias.templates or { };
       };
-      nixos-modules = snowfall-lib.module.create-modules {
-        src = snowfall-lib.fs.get-snowfall-file "modules/nixos";
-        overrides = full-flake-options.modules.nixos or { };
-        alias = alias.modules.nixos or { };
-      };
-      darwin-modules = snowfall-lib.module.create-modules {
-        src = snowfall-lib.fs.get-snowfall-file "modules/darwin";
-        overrides = full-flake-options.modules.darwin or { };
-        alias = alias.modules.darwin or { };
-      };
-      home-modules = snowfall-lib.module.create-modules {
-        src = snowfall-lib.fs.get-snowfall-file "modules/home";
-        overrides = full-flake-options.modules.home or { };
-        alias = alias.modules.home or { };
-      };
+      create-module-set =
+        type:
+        snowfall-lib.module.create-modules {
+          src = snowfall-lib.fs.get-snowfall-file "modules/${type}";
+          overrides = full-flake-options.modules.${type} or { };
+          alias = alias.modules.${type} or { };
+        };
+      nixos-modules = create-module-set "nixos";
+      darwin-modules = create-module-set "darwin";
+      home-modules = create-module-set "home";
       overlays = snowfall-lib.overlay.create-overlays {
         inherit namespace;
         extra-overlays = full-flake-options.extra-exported-overlays or { };
@@ -231,21 +222,16 @@ let
           builtins.map (system: {
             name = system;
             value = flake-outputs.packages.${system} // {
-              homeConfigurations =
-                let
-                  homeNames = filterAttrs (_: home: home.system == system) homes;
-                  homeConfigurations = mapAttrs (
-                    home-name: _: flake-outputs.homeConfigurations.${home-name}
-                  ) homeNames;
-                  renamedHomeConfigurations = mapAttrs' (
-                    name: value:
-                    if hasSuffix "@${system}" name then
-                      nameValuePair (removeSuffix "@${system}" name) value
-                    else
-                      nameValuePair name value
-                  ) homeConfigurations;
-                in
-                renamedHomeConfigurations;
+              homeConfigurations = pipe homes [
+                (filterAttrs (_: home: home.system == system))
+                (mapAttrs (home-name: _: flake-outputs.homeConfigurations.${home-name}))
+                (mapAttrs' (
+                  name: value:
+                  nameValuePair
+                    (if hasSuffix "@${system}" name then removeSuffix "@${system}" name else name)
+                    value
+                ))
+              ];
             };
           }) (builtins.attrNames flake-outputs.pkgs)
         ));
