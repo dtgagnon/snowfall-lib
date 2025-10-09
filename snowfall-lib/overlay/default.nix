@@ -111,6 +111,8 @@ in
         create-overlay = (
           overlays: file:
           let
+            # We are building flake outputs based on file paths. Nix doesn't allow this
+            # so we have to explicitly discard the string's path context to use it as an attribute name.
             name = builtins.unsafeDiscardStringContext (snowfall-lib.path.get-parent-directory file);
             overlay =
               final: prev:
@@ -159,6 +161,8 @@ in
         create-package-overlay =
           package-overlays: file:
           let
+            # We are building flake outputs based on file paths. Nix doesn't allow this
+            # so we have to explicitly discard the string's path context to use it as an attribute name.
             name = builtins.unsafeDiscardStringContext (snowfall-lib.path.get-parent-directory file);
             overlay =
               final: prev:

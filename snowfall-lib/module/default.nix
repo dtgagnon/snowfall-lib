@@ -41,6 +41,8 @@ in
         create-module-metadata = module: {
           name =
             let
+              # We are building flake outputs based on file paths. Nix doesn't allow this
+              # so we have to explicitly discard the string's path context for string manipulation.
               path-name = builtins.replaceStrings [ (builtins.toString src) "/default.nix" ] [ "" "" ] (
                 builtins.unsafeDiscardStringContext module
               );
