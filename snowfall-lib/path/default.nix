@@ -119,5 +119,19 @@ in
         concatStringsSep "" (init (split-file-extension file-name))
       else
         file-name;
+
+    ## Get the output name from a file path for flake outputs.
+    ## This handles the unsafeDiscardStringContext pattern used throughout.
+    ## Example Usage:
+    ## ```nix
+    ## get-output-name ./foo/bar/default.nix
+    ## ```
+    ## Result:
+    ## ```nix
+    ## "bar"
+    ## ```
+    #@ Path -> String
+    get-output-name = path: 
+      builtins.unsafeDiscardStringContext (get-parent-directory path);
   };
 }
