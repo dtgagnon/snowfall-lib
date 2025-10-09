@@ -66,19 +66,22 @@ in
     #@ [Attrs] -> Attrs
     merge-shallow-packages =
       items:
-      foldl (
-        result: item:
-        result
-        // (mapAttrs (
-          name: value:
-          if isDerivation value then
-            value
-          else if builtins.isAttrs value then
-            (result.${name} or { }) // value
-          else
-            value
-        ) item)
-      ) { } items;
+      let
+        merge-item =
+          result: item:
+          let
+            merge-value =
+              name: value:
+              if isDerivation value then
+                value
+              else if builtins.isAttrs value then
+                (result.${name} or { }) // value
+              else
+                value;
+          in
+          result // mapAttrs merge-value item;
+      in
+      foldl merge-item { } items;
 
     ## Merge items with a merge function and apply aliases
     ## Example Usage:
@@ -89,9 +92,23 @@ in
     #@ (Attrs -> Attrs -> Attrs) -> [Attrs] -> Attrs -> Attrs
     merge-with-aliases = merge-fn: items: alias:
       let
-        items-without-aliases = foldl merge-fn { } items;
-        aliased-items = mapAttrs (name: value: items-without-aliases.${value}) alias;
+        merged = foldl merge-fn { } items;
       in
-      items-without-aliases // aliased-items;
+      merged // mapAttrs (name: value: merged.${value}) alias;
+
+    ## Apply aliases and overrides to an already-merged attribute set.
+    ## Use this when you have a pre-built attribute set (e.g., from fix).
+    ## Example Usage:
+    ## ```nix
+    ## apply-aliases-and-overrides packages-set { default = "vim"; } { extra = ...; }
+    ## ```
+    ## Result: packages-set with aliases and overrides applied
+    #@ Attrs -> Attrs -> Attrs -> Attrs
+    apply-aliases-and-overrides =
+      items: alias: overrides:
+      let
+        aliased = mapAttrs (name: value: items.${value}) alias;
+      in
+      items // aliased // overrides;
   };
 }

@@ -86,8 +86,7 @@ in
           in
           foldl merge-packages { } packages-metadata
         );
-        aliased-items = mapAttrs (name: value: packages-without-aliases.${value}) alias;
-        packages = packages-without-aliases // aliased-items // overrides;
+        packages = snowfall-lib.attrs.apply-aliases-and-overrides packages-without-aliases alias overrides;
       in
       filterPackages pkgs.stdenv.hostPlatform.system packages;
   in {
