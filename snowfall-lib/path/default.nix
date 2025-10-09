@@ -131,8 +131,9 @@ in
     ## "bar"
     ## ```
     #@ Path -> String
-    get-output-name = path: 
-      builtins.unsafeDiscardStringContext (get-parent-directory path);
+    get-output-name = snowfall-lib.fp.compose
+      builtins.unsafeDiscardStringContext
+      get-parent-directory;
 
     ## Get the directory name for flake outputs.
     ## Example Usage:
@@ -144,8 +145,9 @@ in
     ## "foo"
     ## ```
     #@ Path -> String
-    get-directory-name = path: 
-      builtins.unsafeDiscardStringContext (baseNameOf path);
+    get-directory-name = snowfall-lib.fp.compose
+      builtins.unsafeDiscardStringContext
+      baseNameOf;
 
     ## Get relative module path from source directory.
     ## Example Usage:
