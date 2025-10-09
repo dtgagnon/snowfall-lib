@@ -26,6 +26,7 @@ let
     types
     hasInfix
     hasSuffix
+    pipe
     ;
 
   user-homes-root = snowfall-lib.fs.get-snowfall-file "homes";
@@ -64,9 +65,10 @@ in
     split-user-and-host =
       target:
       let
-        raw-name-parts = builtins.split "@" target;
-        name-parts = builtins.filter builtins.isString raw-name-parts;
-
+        name-parts = pipe target [
+          (builtins.split "@")
+          (builtins.filter builtins.isString)
+        ];
         user = builtins.elemAt name-parts 0;
         host = if builtins.length name-parts > 1 then builtins.elemAt name-parts 1 else "";
       in
