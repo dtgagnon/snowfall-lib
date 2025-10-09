@@ -179,8 +179,7 @@ in
     get-target-homes-metadata =
       target:
       let
-        homes = snowfall-lib.fs.get-directories target;
-        existing-homes = builtins.filter (home: builtins.pathExists "${home}/default.nix") homes;
+        existing-homes = snowfall-lib.fs.get-directories-with-default target;
         create-home-metadata =
           path:
           let

@@ -99,6 +99,20 @@ in
       in
       mapAttrsToList (name: kind: "${path}/${name}") filtered-entries;
 
+    ## Get directories containing default.nix at a given path.
+    ## Example Usage:
+    ## ```nix
+    ## get-directories-with-default ./systems/x86_64-linux
+    ## ```
+    ## Result:
+    ## ```nix
+    ## [ "./systems/x86_64-linux/my-host" ]
+    ## ```
+    #@ Path -> [Path]
+    get-directories-with-default =
+      path:
+      builtins.filter (dir: pathExists "${dir}/default.nix") (get-directories path);
+
     ## Get files at a given path.
     ## Example Usage:
     ## ```nix

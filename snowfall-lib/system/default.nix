@@ -106,8 +106,7 @@ in
     get-target-systems-metadata =
       target:
       let
-        systems = snowfall-lib.fs.get-directories target;
-        existing-systems = builtins.filter (system: builtins.pathExists "${system}/default.nix") systems;
+        existing-systems = snowfall-lib.fs.get-directories-with-default target;
         create-system-metadata = path: {
           path = "${path}/default.nix";
           # We are building flake outputs based on file contents. Nix doesn't like this
