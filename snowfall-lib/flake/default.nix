@@ -18,8 +18,8 @@ let
     traceVal
     ;
 in
-rec {
-  flake = rec {
+let
+  flake = let
     ## Remove the `self` attribute from an attribute set.
     ## Example Usage:
     ## ```nix
@@ -43,6 +43,8 @@ rec {
     ## ```
     #@ Attrs -> Attrs
     without-src = flake-inputs: builtins.removeAttrs flake-inputs [ "src" ];
+  in {
+    inherit without-self without-src;
 
     ## Remove the `src` and `self` attributes from an attribute set.
     ## Example Usage:
@@ -248,4 +250,7 @@ rec {
           }) (builtins.attrNames flake-outputs.pkgs)
         ));
     };
+in
+{
+  inherit flake mkFlake;
 }

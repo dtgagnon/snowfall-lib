@@ -22,7 +22,7 @@ let
   user-modules-root = snowfall-lib.fs.get-snowfall-file "modules";
 in
 {
-  system = rec {
+  system = let
     ## Get the name of a system based on its file path.
     ## Example Usage:
     ## ```nix
@@ -349,5 +349,19 @@ in
         );
       in
       created-systems;
+  in {
+    inherit
+      get-inferred-system-name
+      is-darwin
+      is-linux
+      is-virtual
+      get-virtual-system-type
+      get-target-systems-metadata
+      get-system-builder
+      get-system-output
+      get-resolved-system-target
+      create-system
+      create-systems
+      ;
   };
 }

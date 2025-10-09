@@ -32,7 +32,7 @@ let
   user-modules-root = snowfall-lib.fs.get-snowfall-file "modules";
 in
 {
-  home = rec {
+  home = let
     # Modules in home-manager expect `hm` to be available directly on `lib` itself.
     home-lib =
       # NOTE: This prevents an error during evaluation if the input does
@@ -427,5 +427,14 @@ in
       ++ shared-modules
       ++ shared-user-modules
       ++ system-modules;
+  in {
+    inherit
+      home-lib
+      split-user-and-host
+      create-home
+      get-target-homes-metadata
+      create-homes
+      create-home-system-modules
+      ;
   };
 }

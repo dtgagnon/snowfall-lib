@@ -8,6 +8,7 @@ let
   inherit (core-inputs.flake-utils-plus.lib) filterPackages allSystems;
   inherit (core-inputs.nixpkgs.lib)
     assertMsg
+    fix
     foldl
     mapAttrs
     filterAttrs
@@ -17,7 +18,7 @@ let
   user-packages-root = snowfall-lib.fs.get-snowfall-file "packages";
 in
 {
-  package = rec {
+  package = let
     ## Create flake output packages.
     ## Example Usage:
     ## ```nix
@@ -39,46 +40,57 @@ in
       }:
       let
         user-packages = snowfall-lib.fs.get-default-nix-files-recursive src;
-        create-package-metadata =
-          package:
-          let
-            namespaced-packages = {
-              ${namespace} = packages-without-aliases;
-            };
-            extra-inputs =
-              pkgs
-              // namespaced-packages
-              // {
-                inherit channels namespace;
-                lib = snowfall-lib.internal.system-lib;
-                pkgs = pkgs // namespaced-packages;
-                inputs = user-inputs;
-              };
-          in
-          {
-            name = builtins.unsafeDiscardStringContext (snowfall-lib.path.get-parent-directory package);
-            drv =
-              let
-                pkg = callPackageWith extra-inputs package { };
-              in
-              pkg
-              // {
-                meta = (pkg.meta or { }) // {
-                  snowfall = {
-                    path = package;
-                  };
-                };
-              };
-          };
-        packages-metadata = builtins.map create-package-metadata user-packages;
         merge-packages =
           packages: metadata:
           packages
           // {
             ${metadata.name} = metadata.drv;
           };
-        packages = snowfall-lib.attrs.merge-with-aliases merge-packages packages-metadata alias // overrides;
+        packages-without-aliases = fix (
+          packages-without-aliases:
+          let
+            create-package-metadata =
+              package:
+              let
+                namespaced-packages = {
+                  ${namespace} = packages-without-aliases;
+                };
+                extra-inputs =
+                  pkgs
+                  // namespaced-packages
+                  // {
+                    inherit channels namespace;
+                    lib = snowfall-lib.internal.system-lib;
+                    pkgs = pkgs // namespaced-packages;
+                    inputs = user-inputs;
+                  };
+              in
+              {
+                # We are building flake outputs based on file paths. Nix doesn't allow this
+                # so we have to explicitly discard the string's path context to use it as an attribute name.
+                name = builtins.unsafeDiscardStringContext (snowfall-lib.path.get-parent-directory package);
+                drv =
+                  let
+                    pkg = callPackageWith extra-inputs package { };
+                  in
+                  pkg
+                  // {
+                    meta = (pkg.meta or { }) // {
+                      snowfall = {
+                        path = package;
+                      };
+                    };
+                  };
+              };
+            packages-metadata = builtins.map create-package-metadata user-packages;
+          in
+          foldl merge-packages { } packages-metadata
+        );
+        aliased-items = mapAttrs (name: value: packages-without-aliases.${value}) alias;
+        packages = packages-without-aliases // aliased-items // overrides;
       in
       filterPackages pkgs.stdenv.hostPlatform.system packages;
+  in {
+    inherit create-packages;
   };
 }

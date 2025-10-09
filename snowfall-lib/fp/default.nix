@@ -9,7 +9,7 @@ let
   inherit (core-inputs.nixpkgs.lib) id foldr flip;
 in
 {
-  fp = rec {
+  fp = let
     ## Compose two functions.
     ## Example Usage:
     ## ```nix
@@ -24,18 +24,6 @@ in
       f: g: x:
       f (g x);
 
-    ## Compose many functions.
-    ## Example Usage:
-    ## ```nix
-    ## compose-all [ add-two add-one ]
-    ## ```
-    ## Result:
-    ## ```nix
-    ## (x: add-two (add-one x))
-    ## ```
-    #@ [(x -> y)] -> a -> b
-    compose-all = foldr compose id;
-
     ## Call a function with an argument.
     ## Example Usage:
     ## ```nix
@@ -47,6 +35,20 @@ in
     ## ```
     #@ (a -> b) -> a -> b
     call = f: x: f x;
+  in {
+    inherit compose call;
+
+    ## Compose many functions.
+    ## Example Usage:
+    ## ```nix
+    ## compose-all [ add-two add-one ]
+    ## ```
+    ## Result:
+    ## ```nix
+    ## (x: add-two (add-one x))
+    ## ```
+    #@ [(x -> y)] -> a -> b
+    compose-all = foldr compose id;
 
     ## Apply an argument to a function.
     ## Example Usage:
