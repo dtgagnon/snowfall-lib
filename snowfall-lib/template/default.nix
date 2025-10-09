@@ -28,19 +28,31 @@ in {
       alias ? {},
     }: let
       user-templates = snowfall-lib.fs.get-directories src;
-      create-template-metadata = template: {
-        name = builtins.unsafeDiscardStringContext (baseNameOf template);
-        path = template;
-      };
+      create-template-metadata = template: let
+        flake-file = template + "/flake.nix";
+        has-flake = builtins.pathExists flake-file;
+        flake-attrs =
+          if has-flake
+          then import flake-file
+          else {};
+        description = flake-attrs.description or null;
+      in
+        {
+          name = builtins.unsafeDiscardStringContext (baseNameOf template);
+          path = template;
+        }
+        // (
+          if description != null
+          then {inherit description;}
+          else {}
+        );
       templates-metadata = builtins.map create-template-metadata user-templates;
       merge-templates = templates: metadata:
         templates
         // {
           ${metadata.name} =
             (overrides.${metadata.name} or {})
-            // {
-              inherit (metadata) path;
-            };
+            // (builtins.removeAttrs metadata ["name"]);
         };
       templates-without-aliases = foldl merge-templates {} templates-metadata;
       aliased-templates = mapAttrs (name: value: templates-without-aliases.${value}) alias;
