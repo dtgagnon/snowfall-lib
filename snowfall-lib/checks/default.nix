@@ -4,20 +4,9 @@
   snowfall-lib,
   snowfall-config,
 }:
-let
-  inherit (core-inputs.flake-utils-plus.lib) filterPackages;
-  inherit (core-inputs.nixpkgs.lib)
-    assertMsg
-    foldl
-    mapAttrs
-    callPackageWith
-    ;
-
-  user-checks-root = snowfall-lib.fs.get-snowfall-file "checks";
-in
 {
   check = {
-    ## Create flake output packages.
+    ## Create flake output checks.
     ## Example Usage:
     ## ```nix
     ## create-checks { inherit channels; src = ./my-checks; overrides = { inherit another-check; }; alias = { default = "another-check"; }; }
@@ -27,41 +16,7 @@ in
     ## { another-check = ...; my-check = ...; default = ...; }
     ## ```
     #@ Attrs -> Attrs
-    create-checks =
-      {
-        channels,
-        src ? user-checks-root,
-        pkgs ? channels.nixpkgs,
-        overrides ? { },
-        alias ? { },
-      }:
-      let
-        user-checks = snowfall-lib.fs.get-default-nix-files-recursive src;
-        create-check-metadata =
-          check:
-          let
-            extra-inputs = pkgs // {
-              inherit channels;
-              lib = snowfall-lib.internal.system-lib;
-              inputs = snowfall-lib.flake.without-src user-inputs;
-              namespace = snowfall-config.namespace;
-            };
-          in
-          {
-            # We are building flake outputs based on file paths. Nix doesn't allow this
-            # so we have to explicitly discard the string's path context to use it as an attribute name.
-            name = builtins.unsafeDiscardStringContext (snowfall-lib.path.get-parent-directory check);
-            drv = callPackageWith extra-inputs check { };
-          };
-        checks-metadata = builtins.map create-check-metadata user-checks;
-        merge-checks =
-          checks: metadata:
-          checks
-          // {
-            ${metadata.name} = metadata.drv;
-          };
-        checks = snowfall-lib.attrs.merge-with-aliases merge-checks checks-metadata alias // overrides;
-      in
-      filterPackages pkgs.stdenv.hostPlatform.system checks;
+    create-checks = args:
+      snowfall-lib.internal.create-simple-derivations (args // { type = "checks"; });
   };
 }
