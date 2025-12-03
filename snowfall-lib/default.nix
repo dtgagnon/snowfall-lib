@@ -19,28 +19,19 @@ let
     src = user-options.src;
   };
 
-  inherit (core-inputs.nixpkgs.lib)
-    assertMsg
-    fix
-    filterAttrs
-    mergeAttrs
-    fold
-    recursiveUpdate
-    callPackageWith
-    isFunction
-    ;
+  inherit (core-inputs.nixpkgs.lib) assertMsg fix filterAttrs mergeAttrs foldr recursiveUpdate callPackageWith isFunction;
 
   # Recursively merge a list of attribute sets.
   # Type: [Attrs] -> Attrs
   # Usage: merge-deep [{ x = 1; } { x = 2; }]
   #   result: { x = 2; }
-  merge-deep = fold recursiveUpdate { };
+  merge-deep = foldr recursiveUpdate { };
 
   # Merge the root of a list of attribute sets.
   # Type: [Attrs] -> Attrs
   # Usage: merge-shallow [{ x = 1; } { x = 2; }]
   #   result: { x = 2; }
-  merge-shallow = fold mergeAttrs { };
+  merge-shallow = foldr mergeAttrs { };
 
   # Transform an attribute set of inputs into an attribute set where
   # the values are the inputs' `lib` attribute. Entries without a `lib`
@@ -50,19 +41,22 @@ let
   #   result: { x = nixpkgs.lib; }
   get-libs =
     attrs:
-    fold (
-      name: acc:
-      let
-        value = attrs.${name};
-      in
-      if builtins.isAttrs (value.lib or null) then acc // { ${name} = value.lib; } else acc
-    ) { } (builtins.attrNames attrs);
+    foldr
+      (
+        name: acc:
+        let
+          value = attrs.${name};
+        in
+        if builtins.isAttrs (value.lib or null) then acc // { ${name} = value.lib; } else acc
+      )
+      { }
+      (builtins.attrNames attrs);
 
   # Remove the `self` attribute from an attribute set.
   # Type: Attrs -> Attrs
   # Usage: without-self { self = {}; x = true; }
   #   result: { x = true; }
-  without-self = attrs: builtins.removeAttrs attrs [ "self" ];
+  without-self = attrs: removeAttrs attrs [ "self" ];
 
   core-inputs-libs = get-libs (without-self core-inputs);
   user-inputs-libs = get-libs (without-self user-inputs);
@@ -73,7 +67,7 @@ let
   snowfall-lib-dirs =
     let
       files = builtins.readDir snowfall-lib-root;
-      dirs = filterAttrs (name: kind: kind == "directory") files;
+      dirs = filterAttrs (_name: kind: kind == "directory") files;
       names = builtins.attrNames dirs;
     in
     names;
@@ -89,12 +83,12 @@ let
           user-inputs
           ;
       };
-      libs = builtins.map (dir: import "${snowfall-lib-root}/${dir}" attrs) snowfall-lib-dirs;
+      libs = map (dir: import "${snowfall-lib-root}/${dir}" attrs) snowfall-lib-dirs;
     in
     merge-deep libs
   );
 
-  snowfall-top-level-lib = filterAttrs (name: value: !builtins.isAttrs value) snowfall-lib;
+  snowfall-top-level-lib = filterAttrs (_name: value: !builtins.isAttrs value) snowfall-lib;
 
   base-lib = merge-shallow [
     core-inputs.nixpkgs.lib
@@ -119,17 +113,19 @@ let
           { ${snowfall-config.namespace} = user-lib; }
         ];
       };
-      libs = builtins.map (
-        path:
-        let
-          imported-module = import path;
-        in
-        if isFunction imported-module then
-          callPackageWith attrs path { }
-        # the only difference is that there is no `override` and `overrideDerivation` on returned value
-        else
-          imported-module
-      ) user-lib-modules;
+      libs = map
+        (
+          usePath:
+          let
+            imported-module = import usePath;
+          in
+          if isFunction imported-module then
+            callPackageWith attrs usePath { }
+          # the only difference is that there is no `override` and `overrideDerivation` on returned value
+          else
+            imported-module
+        )
+        user-lib-modules;
     in
     merge-deep libs
   );
